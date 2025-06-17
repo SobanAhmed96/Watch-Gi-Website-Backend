@@ -12,6 +12,9 @@ const addAdminController = {
     }
 
     const existingAdmin = await AddAdmin.findOne({ email });
+    const token = existingAdmin.generateToken()
+    console.log(token);
+    
     if (existingAdmin) {
       return res.status(409).json({ message: "Admin already exists" });
     }
@@ -51,8 +54,8 @@ const addAdminController = {
     const token = admin.generateToken();
 
     res.cookie("token", token, {
-      // httpOnly: true,
-      // secure: true, // Important for HTTPS on Vercel
+       httpOnly: true,
+       secure: true, // Important for HTTPS on Vercel
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     });
 
