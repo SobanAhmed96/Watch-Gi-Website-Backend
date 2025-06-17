@@ -13,7 +13,6 @@ const addAdminController = {
 
     const existingAdmin = await AddAdmin.findOne({ email });
     const token = existingAdmin.generateToken()
-    console.log(token);
     
     if (existingAdmin) {
       return res.status(409).json({ message: "Admin already exists" });
@@ -34,6 +33,7 @@ const addAdminController = {
         fullname: newAdmin.fullname,
         email: newAdmin.email,
         number: newAdmin.number,
+        token
       },
     });
   }),
