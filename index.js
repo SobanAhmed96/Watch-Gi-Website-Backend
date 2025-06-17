@@ -10,7 +10,7 @@ const app = express();
 
 // ✅ Middleware
 app.use(cors({
-  origin: "https://watch-gi.vercel.app",
+  origin: process.env.CORS_ORIGIN,
   credentials: true,  
 }));
 
