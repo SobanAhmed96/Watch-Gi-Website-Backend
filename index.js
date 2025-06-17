@@ -9,13 +9,14 @@ import router from "./src/router/router.js";
 const app = express();
 
 // ✅ Middleware
+app.use(cookieParser());
+
 app.use(cors({
   origin: process.env.CORS_ORIGIN,
   credentials: true,  
 }));
 
 app.use(express.json());
-app.use(cookieParser());
 app.use(express.static("public"));
 
 // ✅ Routes
