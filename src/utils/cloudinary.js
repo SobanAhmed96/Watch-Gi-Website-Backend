@@ -10,7 +10,7 @@ cloudinary.config({
 const uploadCloudinary = async (filepath) => {
   try {
     const response = await cloudinary.uploader.upload(filepath, {
-      resource_type: "auto",
+      resource_type: "image",
     });
 
     // Remove file after upload

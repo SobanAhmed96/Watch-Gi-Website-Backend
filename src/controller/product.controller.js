@@ -3,113 +3,127 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import uploadCloudinary from "../utils/cloudinary.js";
 
 const productController = {
+  // Create product
   addProduct: asyncHandler(async (req, res) => {
     const { title, price, description, links, category } = req.body;
     const files = req.files;
 
-    // 1. Validation
-    if (!title || !price || !description || !category || !imageProduct) {
+    if (!title || !price || !description || !category || !files || files.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "All fields including image and category are required",
+        message: "All fields and at least one image are required.",
       });
     }
 
-    // 2. Upload image to Cloudinary
-    const upload = files.map((file) => uploadCloudinary(file.path)); 
-    const uploadedResults = await Promise.all(upload)
-    
-    if(uploadedResults.some((result) => result === null)){
+    // Upload images to Cloudinary
+    const uploads = await Promise.all(files.map(file => uploadCloudinary(file.path)));
+
+    if (uploads.some(result => !result || !result.secure_url)) {
       return res.status(500).json({
-          message: "One or more images failed to upload to Cloudinary",
-        });
+        success: false,
+        message: "One or more images failed to upload to Cloudinary.",
+      });
     }
 
-    // 3. Create product with image & category
     const newProduct = await Product.create({
       title,
       price,
       description,
-      productImage: uploadedResults[0].secure_url,
-      productImage2: uploadedResults[2].secure_url,
-      productImage3: uploadedResults[3].secure_url,
-      productImage4: uploadedResults[4].secure_url,
+      productImage: uploads[0]?.secure_url || "",
+      productImage2: uploads[1]?.secure_url || "",
+      productImage3: uploads[2]?.secure_url || "",
+      productImage4: uploads[3]?.secure_url || "",
       links,
       category,
     });
 
     return res.status(201).json({
       success: true,
-      message: "Product created successfully",
+      message: "Product created successfully.",
       product: newProduct,
     });
   }),
 
+  // Get all products
   getProduct: asyncHandler(async (req, res) => {
-    const productData = await Product.find();
-
-    if (!productData || productData.length === 0) {
+    const products = await Product.find();
+    if (!products || products.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "No products found",
+        message: "No products found.",
       });
     }
 
     return res.status(200).json({
       success: true,
-      message: "Products fetched successfully",
-      products: productData,
+      message: "Products fetched successfully.",
+      products,
     });
   }),
 
+  // Get product by ID
   getByIDProduct: asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const productData = await Product.findById(id);
+    const product = await Product.findById(id);
 
-    if (!productData) {
-      return res.status(404).json({
-        success: false,
-        message: "Product not found",
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: "Product fetched successfully",
-      productData,
-    });
-  }),
-
-  editProduct: asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const { title, price, description, links, category } = req.body;
-    const imageProduct = req.file;
-
-    if (!title || !price || !description || !category) {
-      return res.status(400).json({
-        success: false,
-        message: "Title, price, description and category are required.",
-      });
-    }
-
-    const existingProduct = await Product.findById(id);
-    if (!existingProduct) {
+    if (!product) {
       return res.status(404).json({
         success: false,
         message: "Product not found.",
       });
     }
 
-    let imageUrl = existingProduct.productImage;
-    if (imageProduct) {
-      const upload = await uploadCloudinary(imageProduct.path);
-      if (!upload?.secure_url) {
+    return res.status(200).json({
+      success: true,
+      message: "Product fetched successfully.",
+      product,
+    });
+  }),
+
+  // Edit product
+  editProduct: asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { title, price, description, links, category } = req.body;
+    const files = req.files;
+
+    if (!title || !price || !description || !category) {
+      return res.status(400).json({
+        success: false,
+        message: "Title, price, description, and category are required.",
+      });
+    }
+
+    const product = await Product.findById(id);
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found.",
+      });
+    }
+
+    // Keep existing images as default
+    let updatedImages = {
+      productImage: product.productImage,
+      productImage2: product.productImage2,
+      productImage3: product.productImage3,
+      productImage4: product.productImage4,
+    };
+
+    if (files && files.length > 0) {
+      const uploads = await Promise.all(files.map(file => uploadCloudinary(file.path)));
+
+      if (uploads.some(result => !result || !result.secure_url)) {
         return res.status(500).json({
           success: false,
-          message: "Image upload failed.",
+          message: "One or more images failed to upload to Cloudinary.",
         });
       }
-      imageUrl = upload.secure_url;
+
+      // Update each image slot only if new image is uploaded
+      if (uploads[0]?.secure_url) updatedImages.productImage = uploads[0].secure_url;
+      if (uploads[1]?.secure_url) updatedImages.productImage2 = uploads[1].secure_url;
+      if (uploads[2]?.secure_url) updatedImages.productImage3 = uploads[2].secure_url;
+      if (uploads[3]?.secure_url) updatedImages.productImage4 = uploads[3].secure_url;
     }
 
     const updatedProduct = await Product.findByIdAndUpdate(
@@ -120,7 +134,7 @@ const productController = {
         description,
         links,
         category,
-        productImage: imageUrl,
+        ...updatedImages,
       },
       { new: true }
     );
@@ -132,13 +146,14 @@ const productController = {
     });
   }),
 
+  // Delete product
   deleteProduct: asyncHandler(async (req, res) => {
     const { id } = req.params;
 
     if (!id) {
       return res.status(400).json({
         success: false,
-        message: "Product ID is required",
+        message: "Product ID is required.",
       });
     }
 
@@ -146,7 +161,7 @@ const productController = {
 
     return res.status(200).json({
       success: true,
-      message: "Product deleted successfully",
+      message: "Product deleted successfully.",
     });
   }),
 };
