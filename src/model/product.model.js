@@ -21,6 +21,17 @@ const ProductSchema = new mongoose.Schema(
       type: String,
       required: [true, "Product image URL is required"],
     },
+    productImage2: {
+      type: String,
+      required: [true, "Product image URL is required"],
+    },
+    productImage3: {
+      type: String,
+      required: [true, "Product image URL is required"],
+    },
+    productImage4: {
+      type: String,
+    },
     links: {
       type: String,
     },

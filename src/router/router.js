@@ -11,7 +11,7 @@ router.route("/isLogin").get(addAdminController.isLogin);
 
 // Product
 
-router.route("/addProduct").post(upload.single("productImage"), productController.addProduct)
+router.route("/addProduct").post(upload.array("images", 5), productController.addProduct)
 router.route("/getProduct").get(productController.getProduct)
 router.route("/getByIdProduct/:id").get(productController.getByIDProduct)
 router.route("/updateProduct/:id").put( upload.single("productImage") ,productController.editProduct)

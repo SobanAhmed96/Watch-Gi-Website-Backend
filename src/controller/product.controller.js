@@ -5,7 +5,7 @@ import uploadCloudinary from "../utils/cloudinary.js";
 const productController = {
   addProduct: asyncHandler(async (req, res) => {
     const { title, price, description, links, category } = req.body;
-    const imageProduct = req.file;
+    const files = req.files;
 
     // 1. Validation
     if (!title || !price || !description || !category || !imageProduct) {
@@ -16,13 +16,13 @@ const productController = {
     }
 
     // 2. Upload image to Cloudinary
-    const upload = await uploadCloudinary(imageProduct.path);
-
-    if (!upload?.secure_url) {
+    const upload = files.map((file) => uploadCloudinary(file.path)); 
+    const uploadedResults = await Promise.all(upload)
+    
+    if(uploadedResults.some((result) => result === null)){
       return res.status(500).json({
-        success: false,
-        message: "Failed to upload image to Cloudinary",
-      });
+          message: "One or more images failed to upload to Cloudinary",
+        });
     }
 
     // 3. Create product with image & category
@@ -30,7 +30,10 @@ const productController = {
       title,
       price,
       description,
-      productImage: upload.secure_url,
+      productImage: uploadedResults[0].secure_url,
+      productImage2: uploadedResults[2].secure_url,
+      productImage3: uploadedResults[3].secure_url,
+      productImage4: uploadedResults[4].secure_url,
       links,
       category,
     });
