@@ -1,95 +1,120 @@
 import { Product } from "../model/product.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import uploadCloudinary from "../utils/cloudinary.js";
+import fs from "fs";
 
 const productController = {
   addProduct: asyncHandler(async (req, res) => {
     const { title, price, description, links, category } = req.body;
-    const imageProduct = req.file;
+    const files = req.files;
 
-    // 1. Validation
-    if (!title || !price || !description || !category || !imageProduct) {
+    // Validate required fields
+    if (!title || !price || !description || !category) {
       return res.status(400).json({
         success: false,
-        message: "All fields including image and category are required",
+        message: "Title, price, description, and category are required.",
       });
     }
 
-    // 2. Upload image to Cloudinary
-    const upload = await uploadCloudinary(imageProduct.path);
-
-    if (!upload?.secure_url) {
-      return res.status(500).json({
+    // Validate required image (productImage)
+    if (!files || !files.productImage) {
+      return res.status(400).json({
         success: false,
-        message: "Failed to upload image to Cloudinary",
+        message: "Front image (productImage) is required.",
       });
     }
 
-    // 3. Create product with image & category
+    // Upload images to Cloudinary
+    const imageUrls = {};
+
+    for (const key of ["productImage", "productImageBack", "productImageLeft", "productImageRight"]) {
+      if (files[key] && files[key][0]) {
+        const upload = await uploadCloudinary(files[key][0].path);
+
+        if (!upload?.secure_url) {
+          return res.status(500).json({
+            success: false,
+            message: `Failed to upload ${key}.`,
+          });
+        }
+
+        imageUrls[key] = upload.secure_url;
+
+        // Delete local file
+        fs.unlinkSync(files[key][0].path);
+      }
+    }
+
+    // Create product
     const newProduct = await Product.create({
       title,
       price,
       description,
-      productImage: upload.secure_url,
       links,
       category,
+      productImage: imageUrls.productImage,
+      productImageBack: imageUrls.productImageBack,
+      productImageLeft: imageUrls.productImageLeft,
+      productImageRight: imageUrls.productImageRight,
     });
 
     return res.status(201).json({
       success: true,
-      message: "Product created successfully",
+      message: "Product created successfully.",
       product: newProduct,
     });
   }),
 
   getProduct: asyncHandler(async (req, res) => {
-    const productData = await Product.find();
+    const products = await Product.find();
 
-    if (!productData || productData.length === 0) {
+    if (!products || products.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "No products found",
+        message: "No products found.",
       });
     }
 
     return res.status(200).json({
       success: true,
-      message: "Products fetched successfully",
-      products: productData,
+      message: "Products fetched successfully.",
+      products,
     });
   }),
 
   getByIDProduct: asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const productData = await Product.findById(id);
+    const product = await Product.findById(id);
 
-    if (!productData) {
+    if (!product) {
       return res.status(404).json({
         success: false,
-        message: "Product not found",
+        message: "Product not found.",
       });
     }
 
     return res.status(200).json({
       success: true,
-      message: "Product fetched successfully",
-      productData,
+      message: "Product fetched successfully.",
+      product,
     });
   }),
 
   editProduct: asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { title, price, description, links, category } = req.body;
-    const imageProduct = req.file;
+    const files = req.files;
 
+    // Validate fields
     if (!title || !price || !description || !category) {
       return res.status(400).json({
         success: false,
-        message: "Title, price, description and category are required.",
+        message: "Title, price, description, and category are required.",
       });
     }
 
     const existingProduct = await Product.findById(id);
+
     if (!existingProduct) {
       return res.status(404).json({
         success: false,
@@ -97,18 +122,28 @@ const productController = {
       });
     }
 
-    let imageUrl = existingProduct.productImage;
-    if (imageProduct) {
-      const upload = await uploadCloudinary(imageProduct.path);
-      if (!upload?.secure_url) {
-        return res.status(500).json({
-          success: false,
-          message: "Image upload failed.",
-        });
+    // Upload new images if provided
+    const imageUrls = {};
+
+    for (const key of ["productImage", "productImageBack", "productImageLeft", "productImageRight"]) {
+      if (files[key] && files[key][0]) {
+        const upload = await uploadCloudinary(files[key][0].path);
+
+        if (!upload?.secure_url) {
+          return res.status(500).json({
+            success: false,
+            message: `Failed to upload ${key}.`,
+          });
+        }
+
+        imageUrls[key] = upload.secure_url;
+
+        // Delete local file
+        fs.unlinkSync(files[key][0].path);
       }
-      imageUrl = upload.secure_url;
     }
 
+    // Update product
     const updatedProduct = await Product.findByIdAndUpdate(
       id,
       {
@@ -117,7 +152,7 @@ const productController = {
         description,
         links,
         category,
-        productImage: imageUrl,
+        ...imageUrls,
       },
       { new: true }
     );
@@ -135,7 +170,7 @@ const productController = {
     if (!id) {
       return res.status(400).json({
         success: false,
-        message: "Product ID is required",
+        message: "Product ID is required.",
       });
     }
 
@@ -143,7 +178,7 @@ const productController = {
 
     return res.status(200).json({
       success: true,
-      message: "Product deleted successfully",
+      message: "Product deleted successfully.",
     });
   }),
 };

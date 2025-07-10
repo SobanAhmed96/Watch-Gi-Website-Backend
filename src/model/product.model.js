@@ -19,7 +19,19 @@ const ProductSchema = new mongoose.Schema(
     },
     productImage: {
       type: String,
-      required: [true, "Product image URL is required"],
+      required: [true, "Product front image URL is required"],
+    },
+    productImageBack: {
+      type: String,
+      required: false,
+    },
+    productImageLeft: {
+      type: String,
+      required: false,
+    },
+    productImageRight: {
+      type: String,
+      required: false,
     },
     links: {
       type: String,
